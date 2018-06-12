@@ -1,20 +1,27 @@
 var path = require("path");
 var fs = require("fs");
 
-function NPM(working_directory) {
+function NPM(working_directory, node_modules_directory) {
   this.working_directory = working_directory;
+  this.node_modules_directory = node_modules_directory;
 };
 
 NPM.prototype.require = function(import_path, search_path) {
-  if (import_path.indexOf(".") == 0 || import_path.indexOf("/") == 0) {
+  if (import_path.indexOf(".") == 0 || import_path.indexOf("/") <= 0) {
     return null;
   }
 
-  var separator = import_path.indexOf("/")
-  var package_name = import_path.substring(0, separator);
+  var package_name = import_path.match(/^(?:@[^/]+\/)?[^/]+[/]/)[0].slice(0, -1);
   var contract_name = path.basename(import_path, ".sol");
 
-  var expected_path = path.join((search_path || this.working_directory), "node_modules", package_name, "build", "contracts", contract_name + ".json");
+  // Ugh this is so kludgey
+  var search_modules_directory;
+  if(search_path) {
+    search_modules_directory = path.join(search_path, "node_modules");
+  } else {
+    search_modules_directory = this.node_modules_directory;
+  }
+  var expected_path = path.join(search_modules_directory, package_name, "build", "contracts", contract_name + ".json");
 
   try {
     var result = fs.readFileSync(expected_path, "utf8");
